@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd">
+
+	<description>Example job to get you started. It provides a
+		skeleton for a typical batch application.</description>
+
+	<import resource="classpath:/application-context.xml"/>
+
+	<job id="job" xmlns="http://www.springframework.org/schema/batch" incrementer="jobParametersIncrementer">
+		<step id="step2" parent="faultTolerantStep">
+			<tasklet>
+				<chunk reader="step2FileItemReader" processor="exampleItemProcessor" writer="writer" skip-limit="3">
+					<skippable-exception-classes>
+						<include class="example.ExampleSkipException" />
+					</skippable-exception-classes>
+				</chunk>
+			</tasklet>
+		</step>
+	</job>
+
+	<bean id="reader" class="example.ExampleItemReader" />
+	<bean id="writer" class="example.ExampleItemWriter" />
+
+	<!-- enables the functionality of JobOperator.startNextInstance(jobName) -->
+	<bean id="jobParametersIncrementer" class="org.springframework.batch.core.launch.support.RunIdIncrementer" />
+
+	<bean id="simpleStep"
+		class="org.springframework.batch.core.step.item.SimpleStepFactoryBean"
+		abstract="true">
+		<property name="transactionManager" ref="transactionManager" />
+		<property name="jobRepository" ref="jobRepository" />
+		<property name="startLimit" value="100" />
+		<property name="commitInterval" value="1" />
+	</bean>
+
+	<bean id="step2FileItemReader" class="org.springframework.batch.item.file.FlatFileItemReader"  scope="step">
+		<property name="resource" value="classpath:#{jobParameters['file']}" />
+		<property name="lineMapper">
+			<bean class="org.springframework.batch.item.file.mapping.DefaultLineMapper">
+				<property name="lineTokenizer">
+					<bean class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+						<property name="names" value="ID,bizDate,userName" />
+					</bean>
+				</property>
+				<property name="fieldSetMapper">
+					<bean class="example.Step2InputEntityFieldSetMapper" />
+				</property>
+			</bean>
+		</property>
+	</bean>
+
+	<bean id="exampleItemProcessor" class="example.ExampleItemProcessor" scope="step">
+	<property name="bizDate" value="#{jobParameters['bizDate']}" />
+	</bean>
+
+	<bean id="faultTolerantStep"
+		class="org.springframework.batch.core.step.item.FaultTolerantStepFactoryBean"
+		abstract="true">
+		<property name="transactionManager" ref="transactionManager" />
+		<property name="jobRepository" ref="jobRepository" />
+		<property name="startLimit" value="100" />
+		<property name="commitInterval" value="1" />
+	</bean>
+
+</beans>
